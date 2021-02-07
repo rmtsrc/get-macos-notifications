@@ -7,7 +7,7 @@ const appleUnixEpochDiff = 978307200;
 
 let database;
 
-const getDbConnection = async () => {
+const getDbConnection = async (retries = 3) => {
   if (database) {
     return database;
   }
@@ -18,10 +18,18 @@ const getDbConnection = async () => {
     .toString()
     .trim();
 
-  database = await open({
-    filename: `${notificationDir}/db`,
-    driver: sqlite3.Database,
-  });
+  try {
+    database = await open({
+      filename: `${notificationDir}/db`,
+      driver: sqlite3.Database,
+    });
+  } catch (err) {
+    if (retries < 0) {
+      throw err;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return getDbConnection(retries--);
+  }
 
   return database;
 };
